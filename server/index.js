@@ -46,22 +46,21 @@ app.post('/api/qa/questions/', (req, res) => {
 // QUESTION PUT REQUEST TO MARK AS HELPFUL OR REPORT
 app.put('/api/qa/questions/:question_id/*', (req, res) => {
   const {question_id} = req.params;
+
+  //get the endpoint from frontend request
   let endpoint = req.url.slice(19 + question_id.length);
-  // endpoint = endpointsObj[endpoint];
-  //console.log(endpoint);
+
+  //change the endpoint depending on what it is
   endpoint = endpoint === 'report' ?
     'reported' : endpoint === 'helpful' ?
     'helpfulness' : false;
 
-
-
-
+   // send bad status if endpoint is not valid
   if(!endpoint) {
     res.sendStatus(400);
+    return;
   }
 
-  const query =
-  console.log(endpoint);
   db.query(
     `UPDATE questions
     SET ${endpoint} = ${endpoint} + 1
@@ -141,6 +140,40 @@ app.post('/api/qa/questions/:question_id/answers', (req, res) => {
          })
      })
     })
+});
+
+// ANSWERS PUT REQUEST TO MARK AS HELPFUL OR REPORT
+app.put('/api/qa/answers/:answer_id/*', (req, res) => {
+  const {answer_id} = req.params;
+
+  //get the endpoint from frontend request
+  let endpoint = req.url.slice(17 + answer_id.length);
+
+  console.log(endpoint);
+  //change the endpoint depending on what it is
+  endpoint = endpoint === 'report' ?
+    'reported' : endpoint === 'helpful' ?
+    'helpfulness' : false;
+
+    console.log(endpoint);
+   // send bad status if endpoint is not valid
+  if(!endpoint) {
+    res.sendStatus(400);
+    return;
+  }
+
+  db.query(
+    `UPDATE answers
+    SET ${endpoint} = ${endpoint} + 1
+    WHERE id = ${Number(answer_id)}`,
+  (err, data) => {
+    if(err) {
+      console.log(err);
+      res.sendStatus(400);
+    }
+    res.sendStatus(201);
+  })
+
 });
 
 app.listen(PORT, (error) => {
