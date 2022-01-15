@@ -9,14 +9,8 @@ app.use(express.json())
 
 //get questions data
 app.get('/api/qa/questions/', (req, res) => {
-  console.log(req.query)
-  if(!req.query.count){
-    req.query.count = '5';
-  }
-  if(!req.query.page){
-    req.query.page = '1';
-  }
-  const {product_id, page, count} = req.query;
+  let {product_id, page = 1, count = 5} = req.query;
+  console.log(page, count)
   db.query(
     'SELECT * FROM questions WHERE product_id=? AND reported=0 LIMIT ?',
     [product_id, Number(count)],
@@ -30,11 +24,14 @@ app.get('/api/qa/questions/', (req, res) => {
     })
 });
 
-app.post('/api/groceries', (req, res) => {
-  const { name, quantity, purchased } = req.body;
+//POST A NEW QUESTION
+app.post('/api/qa/questions/', (req, res) => {
+  const { body, name, email, product_id } = req.body;
   db.query(
-    'INSERT INTO groceries (name, quantity, purchased) VALUES (?, ?, ?) ',
-    [name, quantity, purchased],
+    `INSERT INTO questions
+    (body, name, email, product_id, reported, helpfulness)
+    VALUES (?, ?, ?, ?, 0, 0)`,
+    [body, name, email, product_id],
     (err, data) => {
       if (err) {
         console.log(err);
@@ -45,52 +42,49 @@ app.post('/api/groceries', (req, res) => {
     })
 });
 
-// app.delete('/api/groceries', (req, res) => {
-//   db.query(
-//     'DELETE FROM groceries WHERE id = ?',
-//     [req.body.id],
-//     (err, data) => {
-//       if (err) {
-//         console.log(err);
-//         res.sendStatus(400);
-//         return;
-//       }
-//       res.sendStatus(202);
-//     })
-// });
 
-// app.put('/api/groceries', (req, res) => {
-//   const { name, quantity, purchased, id } = req.body;
-//   db.query(
-//     ` UPDATE groceries
-//       SET name = ?, quantity = ?, purchased = ?
-//       WHERE id = ?` ,
-//     [name, quantity, purchased, id],
-//     (err, data) => {
-//       if (err) {
-//         console.log(err);
-//         res.sendStatus(500);
-//         return;
-//       }
-//       res.sendStatus(202);
-//     })
-// });
-
-// get answers
-app.get('/api/qa/questions/:question_id/answers', (req, res) => {
-  console.log(req.params);
+// QUESTION PUT REQUEST TO MARK AS HELPFUL OR REPORT
+app.put('/api/qa/questions/:question_id/*', (req, res) => {
   const {question_id} = req.params;
-  if(!req.query.count){
-    req.query.count = '5';
-  }
-  if(!req.query.page){
-    req.query.page = '1';
+  let endpoint = req.url.slice(19 + question_id.length);
+  // endpoint = endpointsObj[endpoint];
+  //console.log(endpoint);
+  endpoint = endpoint === 'report' ?
+    'reported' : endpoint === 'helpful' ?
+    'helpfulness' : false;
+
+
+
+
+  if(!endpoint) {
+    res.sendStatus(400);
   }
 
-  const {page, count} = req.query;
+  const query =
+  console.log(endpoint);
+  db.query(
+    `UPDATE questions
+    SET ${endpoint} = ${endpoint} + 1
+    WHERE id = ${Number(question_id)}`,
+  (err, data) => {
+    if(err) {
+      console.log(err);
+      res.sendStatus(400);
+    }
+    res.sendStatus(201);
+  })
+
+});
+
+// GET ALL ANSWERS FROM QUESTION_ID
+app.get('/api/qa/questions/:question_id/answers', (req, res) => {
+  const {question_id} = req.params;
+  let {page = 1, count = 5} = req.query;
+
+  //console.log(page, count, question_id);
 
   db.query(
-    'SELECT * FROM answers WHERE question_id=? AND reported=0 LIMIT ?',
+    `SELECT * FROM answers WHERE question_id=? AND reported=0 LIMIT ?`,
     [question_id, Number(count)],
     (err, data) => {
       if (err) {
@@ -98,10 +92,56 @@ app.get('/api/qa/questions/:question_id/answers', (req, res) => {
         res.sendStatus(400);
         return;
       }
-      res.send(data);
+      //res.send(data)
+      data.forEach(ans => {
+        db.query(`Select * from photos where answer_id=?`,[ans.id],
+        (err, data2) => {
+          if(err) {
+            console.log(err);
+            res.sendStatus(400);
+            return;
+          }
+          //console.log(data);
+          ans.photos =  data2;
+          if(data[data.length - 1].photos){
+            res.send(data);
+          }
+        })
+      })
+        // res.send(data)
     })
 });
 
+//POST A NEW ANSWER
+app.post('/api/qa/questions/:question_id/answers', (req, res) => {
+  const { body, name, email, photos = [] } = req.body;
+  const {question_id} = req.params;
+  db.query(
+    `INSERT INTO answers
+    (body, name, email, question_id, reported, helpfulness)
+    VALUES (?, ?, ?, ?, 0, 0)`,
+    [body, name, email, question_id],
+    (err, data) => {
+      if (err) {
+        console.log(err);
+        res.sendStatus(400);
+        return;
+      }
+     photos.forEach(picURL => {
+       db.query(
+         'INSERT INTO photos (answer_id, url) VALUE (?, ?)',
+         [data.insertId, picURL],
+         (err, response) => {
+           if(err) {
+             console.log(err);
+             res.sendStatus(400);
+             return;
+           }
+           res.sendStatus(201);
+         })
+     })
+    })
+});
 
 app.listen(PORT, (error) => {
   if (error) {

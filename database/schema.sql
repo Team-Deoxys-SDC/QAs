@@ -7,11 +7,11 @@ USE questionsAndAnswers;
 -- ---
 -- Table 'PRODUCTS'
 -- ---
-CREATE TABLE Products (
-  id INTEGER AUTO_INCREMENT NOT NULL,
-  name CHAR,
-  PRIMARY KEY (id)
-);
+-- CREATE TABLE Products (
+--   id INTEGER AUTO_INCREMENT NOT NULL,
+--   name CHAR,
+--   PRIMARY KEY (id)
+-- );
 
 -- ---
 -- Table 'QUESTIONS'
@@ -21,14 +21,14 @@ CREATE TABLE Questions (
   id INTEGER  AUTO_INCREMENT NOT NULL,
   product_id INTEGER NOT NULL,
   body VARCHAR(1000) NOT NULL,
-  date DATETIME NOT NULL,
+  date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   name VARCHAR(20) NOT NULL,
   email VARCHAR(50) NOT NULL,
   reported BOOLEAN NOT NULL,
   helpfulness INTEGER NOT NULL,
-  PRIMARY KEY (id),
-  FOREIGN KEY(product_id)
-    REFERENCES Products(id)
+  PRIMARY KEY (id)
+  -- FOREIGN KEY(product_id)
+  --   REFERENCES Products(id)
 );
 
 -- ---
@@ -41,7 +41,7 @@ CREATE TABLE Answers (
   id INTEGER NOT NULL AUTO_INCREMENT,
   question_id INTEGER NOT NULL,
   body VARCHAR(1000) NOT NULL,
-  date DATETIME NOT NULL,
+  date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   name VARCHAR(30) NOT NULL,
   email VARCHAR(50) NOT NULL,
   reported BOOLEAN NOT NULL,
@@ -66,10 +66,30 @@ CREATE TABLE Photos (
     REFERENCES Answers(id)
 );
 
--- ---
--- Foreign Keys
--- ---
+LOAD DATA LOCAL INFILE
+'../questions.csv'
+INTO TABLE Questions
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS
+(id, product_id, body, @date, name, email, reported, helpfulness)
+SET date = FROM_UNIXTIME(SUBSTRING(@date,1,10));
 
--- Questions ADD FOREIGN KEY (product_id) REFERENCES Products (id);
--- Answers ADD FOREIGN KEY (Question_id) REFERENCES Questions (id);
--- Photos ADD FOREIGN KEY (Answer_id) REFERENCES Answers (id);
+LOAD DATA LOCAL INFILE
+'../answers.csv'
+INTO TABLE Answers
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS
+(id, question_id, body, @date, name, email, reported, helpfulness)
+SET date = FROM_UNIXTIME(SUBSTRING(@date,1,10));
+
+LOAD DATA LOCAL INFILE
+'../answers_photos.csv'
+INTO TABLE Photos
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS;
