@@ -10,7 +10,6 @@ app.use(express.json())
 //get questions data
 app.get('/api/qa/questions/', (req, res) => {
   let {product_id, page = 1, count = 5} = req.query;
-  console.log(page, count)
   db.query(
     'SELECT * FROM questions WHERE product_id=? AND reported=0 LIMIT ?',
     [product_id, Number(count)],
