@@ -4,8 +4,8 @@ const db = require("../database");
 
 const PORT = 3000;
 
-app.use('/', express.static(__dirname + '/../../frontend/dist'))
-app.use(express.json())
+app.use('/', express.static(__dirname + '/../../frontend/dist'));
+app.use(express.json());
 
 //get questions data
 app.get('/api/qa/questions/', (req, res) => {
@@ -82,33 +82,33 @@ app.get('/api/qa/questions/:question_id/answers', (req, res) => {
   //console.log(page, count, question_id);
 
   db.query(
-    `SELECT * FROM answers WHERE question_id=? AND reported=0 LIMIT ?`,
+    `SElECT JSON_ARRAYAGG(JSON_OBJECT(
+      'answer_id', id,
+      'body', body,
+      'date', date,
+      'answerer_name', name,
+      'helpfulness', helpfulness,
+      'photos',(SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'id', id,
+          'url', url))
+        FROM photos
+        WHERE photos.answer_id = answers.id)
+      ))
+      AS results FROM answers WHERE question_id=? and reported=0 limit ?;`,
     [question_id, Number(count)],
     (err, data) => {
       if (err) {
         console.log(err);
         res.sendStatus(400);
         return;
+      } else {
+
+        res.send(data);
       }
-      //res.send(data)
-      data.forEach(ans => {
-        db.query(`Select * from photos where answer_id=?`,[ans.id],
-        (err, data2) => {
-          if(err) {
-            console.log(err);
-            res.sendStatus(400);
-            return;
-          }
-          //console.log(data);
-          ans.photos =  data2;
-          if(data[data.length - 1].photos){
-            res.send(data);
-          }
-        })
-      })
-        // res.send(data)
     })
 });
+
 
 //POST A NEW ANSWER
 app.post('/api/qa/questions/:question_id/answers', (req, res) => {
@@ -140,6 +140,8 @@ app.post('/api/qa/questions/:question_id/answers', (req, res) => {
      })
     })
 });
+
+
 
 // ANSWERS PUT REQUEST TO MARK AS HELPFUL OR REPORT
 app.put('/api/qa/answers/:answer_id/*', (req, res) => {
@@ -182,3 +184,8 @@ app.listen(PORT, (error) => {
     console.log(`Listening on port: ${PORT}`)
   }
 })
+
+
+
+
+
